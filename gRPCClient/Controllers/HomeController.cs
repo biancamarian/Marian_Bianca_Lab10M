@@ -64,7 +64,7 @@ namespace gRPCClient.Controllers
             return statusDict;
         }
       
-        public async Task<IActionResult> ServerStreaming(int? id)
+        public async Task<IActionResult> ServerStreaming(string id)
         {
             var channel = GrpcChannel.ForAddress("https://localhost:5001");
             var client = new Greeter.GreeterClient(channel);
@@ -90,22 +90,23 @@ namespace gRPCClient.Controllers
                 return View("ShowStatus", (object)statusDict);
             }
             else {
-                var call = client.SendStatusSS(new SRequest { No = 5 }, cancellationToken: cts.Token);
-                if (id == 5) {
-                    using (call = client.SendStatusSS(new SRequest { No = (int)id }, cancellationToken: cts.Token))
+                    using (var call = client.SendStatusSS(new SRequest { No = 5 }, cancellationToken: cts.Token))
                     {
                         try
                         {
                             await foreach (var message in call.ResponseStream.ReadAllAsync())
                             {
+                            if (id == message.StatusInfo[0].Author)
+                            {
                                 statusDict.Add(message.StatusInfo[0].Author, message.StatusInfo[0].Description);
+                            }
                             }
                         }
                         catch (RpcException ex) when (ex.StatusCode == Grpc.Core.StatusCode.Cancelled)
                         {
                             // Log Stream cancelled
                         }
-                    } }
+                    } 
                 return View("ShowStatus", (object)statusDict);
 
             }
