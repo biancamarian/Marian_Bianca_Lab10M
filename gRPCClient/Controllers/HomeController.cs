@@ -73,7 +73,7 @@ namespace gRPCClient.Controllers
             cts.CancelAfter(TimeSpan.FromSeconds(5));
             if (id == null)
             {
-                using (var call = client.SendStatusSS(new SRequest { No = 5 }, cancellationToken: cts.Token))
+                using (var call = client.SendStatusSS(new SRequest { No = 6 }, cancellationToken: cts.Token))
                 {
                     try
                     {
@@ -112,19 +112,18 @@ namespace gRPCClient.Controllers
             }
         }
 
-        public async Task<IActionResult> ClientStreaming(int? id)
+        public async Task<IActionResult> ClientStreaming(int [] s)
         {
             var channel = GrpcChannel.ForAddress("https://localhost:5001");
             var client = new Greeter.GreeterClient(channel);
             Dictionary<string, string> statusDict = new Dictionary<string, string>();
-            int[] statuses = { 3, 2, 4 };
-            if (id == null)
-            {
+           // int[] statuses = { 3, 2, 4 };
+          
                 using (var call = client.SendStatusCS())
                 {
-                    foreach (var sT in statuses)
+                    foreach (var sT in s)
                     {
-                        await call.RequestStream.WriteAsync(new SRequest { No = sT });
+                       await call.RequestStream.WriteAsync(new SRequest { No = sT });
                     }
                     await call.RequestStream.CompleteAsync();
                     SResponse sRes = await call.ResponseAsync;
@@ -132,35 +131,16 @@ namespace gRPCClient.Controllers
                         statusDict.Add(status.Author, status.Description);
                 }
                 return View("ShowStatus", (object)statusDict);
-            }
-            else
-            {
-                using (var call = client.SendStatusCS())
-                {
-                    foreach (var sT in statuses)
-                    {
-                        if (id == sT)
-                        {
-                            await call.RequestStream.WriteAsync(new SRequest { No = sT });
-                        }
-                    }
-                    await call.RequestStream.CompleteAsync();
-                    SResponse sRes = await call.ResponseAsync;
-                    foreach (StatusInfo status in sRes.StatusInfo)
-                        statusDict.Add(status.Author, status.Description);
-                }
-                return View("ShowStatus", (object)statusDict);
-            }
+            
         }
 
-        public async Task<IActionResult> BiDirectionalStreaming(int? id)
+        public async Task<IActionResult> BiDirectionalStreaming(int[] s)
         {
             var channel = GrpcChannel.ForAddress("https://localhost:5001");
             var client = new Greeter.GreeterClient(channel);
             Dictionary<string, string> statusDict = new Dictionary<string, string>();
-            int[] statusNo = { 3, 2, 4 };
-            if (id == null)
-            {
+          //  int[] statusNo = { 3, 2, 4 };
+            
                 using (var call = client.SendStatusBD())
                 {
                     var responseReaderTask = Task.Run(async () =>
@@ -173,40 +153,15 @@ namespace gRPCClient.Controllers
                         }
                     });
 
-                    foreach (var sT in statusNo)
+                    foreach (var sT in s)
                     {
-                        await call.RequestStream.WriteAsync(new SRequest { No = sT });
-                    }
-                    await call.RequestStream.CompleteAsync();
-                    await responseReaderTask;
-                }
-
-            }
-            else
-            {
-                using (var call = client.SendStatusBD())
-                {
-                    var responseReaderTask = Task.Run(async () =>
-                    {
-                        while (await call.ResponseStream.MoveNext())
-                        {
-                            var response = call.ResponseStream.Current;
-                            foreach (StatusInfo status in response.StatusInfo)
-                                statusDict.Add(status.Author, status.Description);
-                        }
-                    });
-
-                    foreach (var sT in statusNo)
-                    {
-                        if (id == sT)
-                        {
                             await call.RequestStream.WriteAsync(new SRequest { No = sT });
-                        }
+                        
                     }
                     await call.RequestStream.CompleteAsync();
                     await responseReaderTask;
                 }
-            }
+            
 
             return View("ShowStatus", (object)statusDict);
         }
